@@ -1,33 +1,32 @@
-# Copyright (2025) Bytedance Ltd. and/or its affiliates 
+# Copyright (2025) Bytedance Ltd. and/or its affiliates
 
-# Licensed under the Apache License, Version 2.0 (the "License"); 
-# you may not use this file except in compliance with the License. 
-# You may obtain a copy of the License at 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-#     http://www.apache.org/licenses/LICENSE-2.0 
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# Unless required by applicable law or agreed to in writing, software 
-# distributed under the License is distributed on an "AS IS" BASIS, 
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
-# See the License for the specific language governing permissions and 
-# limitations under the License. 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import cv2
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from torchvision.transforms import Compose
-import cv2
-import numpy as np
 
-from .dinov2 import DINOv2
-from .dpt_temporal import DPTHeadTemporal
-from .util.transform import Resize, NormalizeImage, PrepareForNet
-
-from utils.util import compute_scale_and_shift, get_interpolate_frames
+from video_depth_anything.dinov2 import DINOv2
+from video_depth_anything.dpt_temporal import DPTHeadTemporal
+from video_depth_anything.utils.transform import Resize, NormalizeImage, PrepareForNet
 
 # infer settings, do not change
 INFER_LEN = 32
 OVERLAP = 10
 INTERP_LEN = 8
+
 
 class VideoDepthAnything(nn.Module):
     def __init__(
@@ -47,7 +46,7 @@ class VideoDepthAnything(nn.Module):
             "vitb": [2, 5, 8, 11],
             'vitl': [4, 11, 17, 23]
         }
-        
+
         self.encoder = encoder
         self.pretrained = DINOv2(model_name=encoder)
 
@@ -61,7 +60,7 @@ class VideoDepthAnything(nn.Module):
 
     def forward(self, x):
         return self.forward_depth(self.forward_features(x), x.shape)[0]
-    
+
     def forward_features(self, x):
         features = self.pretrained.get_intermediate_layers(x.flatten(0,1), self.intermediate_layer_idx[self.encoder], return_class_token=True)
         return features
@@ -73,7 +72,7 @@ class VideoDepthAnything(nn.Module):
         depth = F.interpolate(depth, size=(H, W), mode="bilinear", align_corners=True)
         depth = F.relu(depth)
         return depth.squeeze(1).unflatten(0, (B, T)), cur_cached_hidden_state_list # return shape [B, T, H, W]
-    
+
     def infer_video_depth_one(self, frame, input_size=518, device='cuda', fp32=False):
         self.id += 1
 
@@ -104,7 +103,7 @@ class VideoDepthAnything(nn.Module):
             # Inference the first frame
             cur_list = [torch.from_numpy(self.transform({'image': frame.astype(np.float32) / 255.0})['image']).unsqueeze(0).unsqueeze(0)]
             cur_input = torch.cat(cur_list, dim=1).to(device)
-            
+
             with torch.no_grad():
                 with torch.autocast(device_type=device, enabled=(not fp32)):
                     cur_feature = self.forward_features(cur_input)

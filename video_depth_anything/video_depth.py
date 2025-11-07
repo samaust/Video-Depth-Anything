@@ -11,26 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import gc
+
+import cv2
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from torchvision.transforms import Compose
-import cv2
 from tqdm import tqdm
-import numpy as np
-import gc
 
-from .dinov2 import DINOv2
-from .dpt_temporal import DPTHeadTemporal
-from .util.transform import Resize, NormalizeImage, PrepareForNet
-
-from utils.util import compute_scale_and_shift, get_interpolate_frames
+from video_depth_anything.dinov2 import DINOv2
+from video_depth_anything.dpt_temporal import DPTHeadTemporal
+from video_depth_anything.utils.transform import Resize, NormalizeImage, PrepareForNet
+from video_depth_anything.utils.utils import compute_scale_and_shift, get_interpolate_frames
 
 # infer settings, do not change
 INFER_LEN = 32
 OVERLAP = 10
 KEYFRAMES = [0,12,24,25,26,27,28,29,30,31]
 INTERP_LEN = 8
+
 
 class VideoDepthAnything(nn.Module):
     def __init__(
@@ -160,4 +161,3 @@ class VideoDepthAnything(nn.Module):
         depth_list = depth_list_aligned
 
         return np.stack(depth_list[:org_video_len], axis=0), target_fps
-

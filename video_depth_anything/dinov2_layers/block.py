@@ -3,21 +3,20 @@
 #
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-
+#
 # References:
 #   https://github.com/facebookresearch/dino/blob/master/vision_transformer.py
 #   https://github.com/rwightman/pytorch-image-models/tree/master/timm/layers/patch_embed.py
-
 import logging
 from typing import Callable, List, Any, Tuple, Dict
 
 import torch
 from torch import nn, Tensor
 
-from .attention import Attention, MemEffAttention
-from .drop_path import DropPath
-from .layer_scale import LayerScale
-from .mlp import Mlp
+from video_depth_anything.dinov2_layers.attention import Attention, MemEffAttention
+from video_depth_anything.dinov2_layers.drop_path import DropPath
+from video_depth_anything.dinov2_layers.layer_scale import LayerScale
+from video_depth_anything.dinov2_layers.mlp import Mlp
 
 
 logger = logging.getLogger("dinov2")

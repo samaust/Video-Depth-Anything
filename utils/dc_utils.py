@@ -3,18 +3,20 @@
 #
 # This file may have been modified by ByteDance Ltd. and/or its affiliates on [date of modification]
 # Original file is released under [ MIT License license], with the full license text available at [https://github.com/Tencent/DepthCrafter?tab=License-1-ov-file].
-import numpy as np
-import matplotlib.cm as cm
-import imageio
 try:
     from decord import VideoReader, cpu
     DECORD_AVAILABLE = True
 except:
     import cv2
     DECORD_AVAILABLE = False
+import imageio
+import numpy as np
+import matplotlib.cm as cm
+
 
 def ensure_even(value):
     return value if value % 2 == 0 else value + 1
+
 
 def read_video_frames(video_path, process_length, target_fps=-1, max_res=-1):
     if DECORD_AVAILABLE:

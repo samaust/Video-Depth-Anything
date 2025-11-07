@@ -1,21 +1,24 @@
-import numpy as np
-import cv2
-import matplotlib.pyplot as plt
-import json
 import argparse
-from scipy.ndimage import map_coordinates
-from tqdm import tqdm
-import os
+import json
 import gc
-import time
+import os
+
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.ndimage import map_coordinates
 import torch
+from tqdm import tqdm
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def compute_errors_torch(gt, pred):
     abs_rel = torch.mean(torch.abs(gt - pred) / gt)
     return abs_rel
-    
+
+
 def get_infer(infer_path,args, target_size = None):
     if infer_path.split('.')[-1] == 'npy':
         img_gray = np.load(infer_path)
@@ -30,11 +33,12 @@ def get_infer(infer_path,args, target_size = None):
     infer = img_gray / infer_factor
     if args.hard_crop:
         infer = infer[args.a:args.b, args.c:args.d]
-    
+
     if target_size is not None:
         if infer.shape[0] != target_size[0] or infer.shape[1] != target_size[1]:
             infer = cv2.resize(infer, (target_size[1], target_size[0]))
     return infer
+
 
 def get_gt(depth_gt_path, gt_factor, args):
     if depth_gt_path.split('.')[-1] == 'npy':
@@ -43,9 +47,10 @@ def get_gt(depth_gt_path, gt_factor, args):
         depth_gt = cv2.imread(depth_gt_path, -1)
         depth_gt = np.array(depth_gt)
     depth_gt = depth_gt / gt_factor
-    
+
     depth_gt[depth_gt==0] = 0
     return depth_gt
+
 
 def depth2disparity(depth, return_mask=False):
     if isinstance(depth, np.ndarray):
@@ -56,6 +61,7 @@ def depth2disparity(depth, return_mask=False):
         return disparity, non_negtive_mask
     else:
         return disparity
+
 
 def tae_torch(depth1, depth2, R_2_1, T_2_1, K, mask):
     H, W = depth1.shape
@@ -103,8 +109,9 @@ def tae_torch(depth1, depth2, R_2_1, T_2_1, K, mask):
     if valid_mask.sum() == 0:
         return 0
     abs_errors = compute_errors_torch(depth2[valid_mask], depth_proj[valid_mask])
-    
+
     return abs_errors
+
 
 def eval_TAE(infer_paths, depth_gt_paths, factors, masks, Ks, poses, args):
     gts = []
@@ -114,15 +121,15 @@ def eval_TAE(infer_paths, depth_gt_paths, factors, masks, Ks, poses, args):
     Ks_cur = []
     poses_cur = []
     masks_cur = []
-    
+
     for i in range(len(infer_paths)):
         # DAV missing some frames
         if not os.path.exists(infer_paths[i]):
             continue
-        
+
         depth_gt = get_gt(depth_gt_paths[i], factors[i], args)
         depth_gt = depth_gt[args.a:args.b, args.c:args.d]
-        
+
         gt_paths_cur.append(depth_gt_paths[i])
         infer = get_infer(infer_paths[i], args, target_size=depth_gt.shape)
 
@@ -132,12 +139,12 @@ def eval_TAE(infer_paths, depth_gt_paths, factors, masks, Ks, poses, args):
         poses_cur.append(poses[i])
         if args.mask:
             masks_cur.append(masks[i])
-    
+
     gts = np.stack(gts, axis=0)
     infs = np.stack(infs, axis=0)
 
     valid_mask = np.logical_and((gts>1e-3), (gts<dataset_max_depth))
-    
+
     gt_disp_masked = 1. / (gts[valid_mask].reshape((-1,1)).astype(np.float64) + 1e-8)
     infs = np.clip(infs, a_min=1e-3, a_max=None)
     pred_disp_masked = infs[valid_mask].reshape((-1,1)).astype(np.float64)
@@ -155,7 +162,7 @@ def eval_TAE(infer_paths, depth_gt_paths, factors, masks, Ks, poses, args):
     pred_depth = np.clip(
             pred_depth, a_min=1e-3, a_max=dataset_max_depth
         )
-    
+
     error_sum = 0.
     for i in range(len(gt_paths_cur) -1):
         depth1 = pred_depth[i]
@@ -167,11 +174,11 @@ def eval_TAE(infer_paths, depth_gt_paths, factors, masks, Ks, poses, args):
         T_2 = poses_cur[i+1]
 
         T_2_1 = np.linalg.inv(T_2) @ T_1
-        
+
         R_2_1 = T_2_1[:3,:3]
         t_2_1 = T_2_1[:3, 3]
         K = Ks_cur[i]
-        
+
         if args.mask:
             mask_path1 = masks_cur[i]
             mask_path2 = masks_cur[i+1]
@@ -191,7 +198,7 @@ def eval_TAE(infer_paths, depth_gt_paths, factors, masks, Ks, poses, args):
 
             mask1 = mask1 > 0
             mask2 = mask2 > 0
-        
+
         depth1 = torch.from_numpy(depth1).to(device=device)
         depth2 = torch.from_numpy(depth2).to(device=device)
         R_2_1 = torch.from_numpy(R_2_1).to(device=device)
@@ -208,10 +215,10 @@ def eval_TAE(infer_paths, depth_gt_paths, factors, masks, Ks, poses, args):
         t_1_2 = torch.from_numpy(t_1_2).to(device=device)
 
         error2 = tae_torch(depth2, depth1, R_1_2, t_1_2, K, mask1)
-        
+
         error_sum += error1
         error_sum += error2
-    
+
     gc.collect()
     result = error_sum / (2 * (len(gt_paths_cur) -1))
     return result*100
@@ -247,10 +254,10 @@ if __name__ == '__main__':
             args.b = -8
             args.c = 11
             args.d = -11
-        
+
         with open(args.json_file, 'r') as fs:
             path_json = json.load(fs)
-        
+
         json_data = path_json[dataset]
         count = 0
         line = '-' * 50
@@ -269,16 +276,16 @@ if __name__ == '__main__':
                 masks = []
                 for images in value:
                     infer_path = (args.infer_path + '/'+ dataset + '/' + images['image']).replace('.jpg', '.npy').replace('.png', '.npy')
-                    
+
                     infer_paths.append(infer_path)
                     depth_gt_paths.append(args.root_path + '/' + images['gt_depth'])
                     factors.append(images['factor'])
                     Ks.append(np.array(images['K']))
                     poses.append(np.array(images['pose']))
-                    
+
                     if args.mask:
                         masks.append(args.root_path + '/' + images['mask'])
-            
+
             infer_paths = infer_paths[args.start_idx:args.end_idx]
             depth_gt_paths = depth_gt_paths[args.start_idx:args.end_idx]
             factors = factors[args.start_idx:args.end_idx]
@@ -291,5 +298,3 @@ if __name__ == '__main__':
         print(dataset,': ','tae ', results_all / count)
         file.write(f'{dataset}: {results_all / count}\n')
         file.write(f'<{line} {dataset} finish {line}>\n')
-
-

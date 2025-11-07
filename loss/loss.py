@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import numpy as np
+
 
 def reduction_batch_based(image_loss, M):
     # average of all valid pixels of the batch
@@ -32,7 +32,7 @@ def gradient_loss(prediction, target, mask, reduction=reduction_batch_based, fra
     if frame_id_mask is not None:
         valid_id_mask_x = ((frame_id_mask[:, :, 1:] - frame_id_mask[:, :, :-1]) == 0).to(mask.dtype)
         valid_id_mask_y = ((frame_id_mask[:, 1:, :] - frame_id_mask[:, :-1, :]) == 0).to(mask.dtype)
-    
+
     M = torch.sum(mask, (1, 2))
 
     diff = prediction - target
@@ -49,6 +49,7 @@ def gradient_loss(prediction, target, mask, reduction=reduction_batch_based, fra
     image_loss = torch.sum(grad_x, (1, 2)) + torch.sum(grad_y, (1, 2))
 
     return reduction(image_loss, M)
+
 
 def normalize_prediction_robust(target, mask, ms=None):
     ssum = torch.sum(mask, (1, 2))
@@ -94,6 +95,7 @@ def compute_scale_and_shift(prediction, target, mask):
                   * b_1[valid]) / (det[valid] + 1e-6)
 
     return x_0, x_1
+
 
 class TrimmedProcrustesLoss(nn.Module):
     def __init__(self, alpha=0.5, scales=4, trim=0.2, reduction="batch-based"):
@@ -159,7 +161,7 @@ class TrimmedMAELoss(nn.Module):
 
         return self.__reduction(trimmed, M)
 
-    
+
 class GradientLoss(nn.Module):
     def __init__(self, scales=4, reduction="batch-based"):
         super().__init__()
@@ -223,7 +225,7 @@ class TemporalGradientMatchingLoss(nn.Module):
                 pred_temp_grad = torch.diff(prediction[:,::temp_stride,...], dim=1)
                 target_temp_grad = torch.diff(target[:,::temp_stride,...], dim=1)
                 temp_mask = mask[:,::temp_stride,...][:,1:,...] & mask[:,::temp_stride,...][:,:-1,...]
-                
+
                 valid_mask_from_target_th = target_temp_grad.abs() < target_th.unsqueeze(-1).unsqueeze(-1)[:,::temp_stride,...][:,1:,...]
                 temp_mask = temp_mask & valid_mask_from_target_th
 

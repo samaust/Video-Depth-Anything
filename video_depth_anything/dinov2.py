@@ -2,22 +2,20 @@
 #
 # This source code is licensed under the Apache License, Version 2.0
 # found in the LICENSE file in the root directory of this source tree.
-
+# 
 # References:
 #   https://github.com/facebookresearch/dino/blob/main/vision_transformer.py
 #   https://github.com/rwightman/pytorch-image-models/tree/master/timm/models/vision_transformer.py
-
 from functools import partial
-import math
 import logging
+import math
 from typing import Sequence, Tuple, Union, Callable
 
 import torch
 import torch.nn as nn
-import torch.utils.checkpoint
 from torch.nn.init import trunc_normal_
 
-from .dinov2_layers import Mlp, PatchEmbed, SwiGLUFFNFused, MemEffAttention, NestedTensorBlock as Block
+from video_depth_anything.dinov2_layers import Mlp, PatchEmbed, SwiGLUFFNFused, MemEffAttention, NestedTensorBlock as Block
 
 
 logger = logging.getLogger("dinov2")
@@ -193,7 +191,7 @@ class DinoVisionTransformer(nn.Module):
         # DINOv2 with register modify the interpolate_offset from 0.1 to 0.0
         w0, h0 = w0 + self.interpolate_offset, h0 + self.interpolate_offset
         # w0, h0 = w0 + 0.1, h0 + 0.1
-        
+
         sqrt_N = math.sqrt(N)
         sx, sy = float(w0) / sqrt_N, float(h0) / sqrt_N
         patch_pos_embed = nn.functional.interpolate(
@@ -203,7 +201,7 @@ class DinoVisionTransformer(nn.Module):
             mode="bicubic",
             antialias=self.interpolate_antialias
         )
-        
+
         assert int(w0) == patch_pos_embed.shape[-2]
         assert int(h0) == patch_pos_embed.shape[-1]
         patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
@@ -402,7 +400,7 @@ def DINOv2(model_name):
         "vitl": vit_large, 
         "vitg": vit_giant2
     }
-    
+
     return model_zoo[model_name](
         img_size=518,
         patch_size=14,

@@ -3,14 +3,12 @@
 #
 # This file may have been modified by ByteDance Ltd. and/or its affiliates on [date of modification]
 # Original file was released under [ Apache-2.0 license], with the full license text available at [https://github.com/guoyww/AnimateDiff?tab=Apache-2.0-1-ov-file#readme].
+import math
+
+from einops import rearrange, repeat
 import torch
 import torch.nn.functional as F
 from torch import nn
-
-from .attention import CrossAttention, FeedForward, apply_rotary_emb, precompute_freqs_cis
-
-from einops import rearrange, repeat
-import math
 
 try:
     import xformers
@@ -20,6 +18,13 @@ try:
 except ImportError:
     print("xFormers not available")
     XFORMERS_AVAILABLE = False
+
+from video_depth_anything.motion_module.attention import (
+    CrossAttention,
+    FeedForward,
+    apply_rotary_emb,
+    precompute_freqs_cis
+)
 
 
 def zero_module(module):
@@ -168,7 +173,6 @@ class TemporalTransformerBlock(nn.Module):
         self.ff = FeedForward(dim, dropout=0.0, activation_fn="geglu")
         self.ff_norm = nn.LayerNorm(dim)
 
-
     def forward(self, hidden_states, encoder_hidden_states=None, attention_mask=None, video_length=None, cached_hidden_state_list=None):
         output_hidden_state_list = []
         for i, (attention_block, norm) in enumerate(zip(self.attention_blocks, self.norms)):
@@ -211,11 +215,11 @@ class PositionalEncoding(nn.Module):
 
 class TemporalAttention(CrossAttention):
     def __init__(
-            self,
-            temporal_max_len                   = 32,
-            pos_embedding_type                 = "ape",
-            *args, **kwargs
-        ):
+        self,
+        temporal_max_len                   = 32,
+        pos_embedding_type                 = "ape",
+        *args, **kwargs
+    ):
         super().__init__(*args, **kwargs)
 
         self.pos_embedding_type = pos_embedding_type
@@ -283,7 +287,6 @@ class TemporalAttention(CrossAttention):
                 target_length = query.shape[1]
                 attention_mask = F.pad(attention_mask, (0, target_length), value=0.0)
                 attention_mask = attention_mask.repeat_interleave(self.heads, dim=0)
-
 
         use_memory_efficient = XFORMERS_AVAILABLE and self._use_memory_efficient_attention_xformers
         if use_memory_efficient and (dim // self.heads) % 8 != 0:

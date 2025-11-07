@@ -1,5 +1,6 @@
 import torch
 
+
 def abs_relative_difference(output, target, valid_mask=None):
     actual_output = output
     actual_target = target
@@ -11,6 +12,7 @@ def abs_relative_difference(output, target, valid_mask=None):
         n = output.shape[-1] * output.shape[-2]
     abs_relative_diff = torch.sum(abs_relative_diff, (-1, -2)) / n
     return abs_relative_diff.mean()
+
 
 def squared_relative_difference(output, target, valid_mask=None):
     actual_output = output
@@ -26,6 +28,7 @@ def squared_relative_difference(output, target, valid_mask=None):
     square_relative_diff = torch.sum(square_relative_diff, (-1, -2)) / n
     return square_relative_diff.mean()
 
+
 def rmse_linear(output, target, valid_mask=None):
     actual_output = output
     actual_target = target
@@ -40,6 +43,7 @@ def rmse_linear(output, target, valid_mask=None):
     rmse = torch.sqrt(mse)
     return rmse.mean()
 
+
 def rmse_log(output, target, valid_mask=None):
     diff = torch.log(output) - torch.log(target)
     if valid_mask is not None:
@@ -52,6 +56,7 @@ def rmse_log(output, target, valid_mask=None):
     rmse = torch.sqrt(mse)
     return rmse.mean()
 
+
 def log10(output, target, valid_mask=None):
     if valid_mask is not None:
         diff = torch.abs(
@@ -60,6 +65,7 @@ def log10(output, target, valid_mask=None):
     else:
         diff = torch.abs(torch.log10(output) - torch.log10(target))
     return diff.mean()
+
 
 # adapt from: https://github.com/imran3180/depth-map-prediction/blob/master/main.py
 def threshold_percentage(output, target, threshold_val, valid_mask=None):
@@ -78,14 +84,18 @@ def threshold_percentage(output, target, threshold_val, valid_mask=None):
     threshold_mat = count_mat / n.cpu()
     return threshold_mat.mean()
 
+
 def delta1_acc(pred, gt, valid_mask):
     return threshold_percentage(pred, gt, 1.25, valid_mask)
+
 
 def delta2_acc(pred, gt, valid_mask):
     return threshold_percentage(pred, gt, 1.25**2, valid_mask)
 
+
 def delta3_acc(pred, gt, valid_mask):
     return threshold_percentage(pred, gt, 1.25**3, valid_mask)
+
 
 def i_rmse(output, target, valid_mask=None):
     output_inv = 1.0 / output
@@ -100,6 +110,7 @@ def i_rmse(output, target, valid_mask=None):
     mse = torch.sum(diff2, (-1, -2)) / n  # [B]
     rmse = torch.sqrt(mse)
     return rmse.mean()
+
 
 def silog_rmse(depth_pred, depth_gt, valid_mask=None):
     diff = torch.log(depth_pred) - torch.log(depth_gt)

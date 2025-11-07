@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61", "setuptools-scm[simple]>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "video_depth_anything"
+description = "video_depth_anything"
+dynamic = ["version"]
+license = "Apache-2.0"
+dependencies = [
+    "easydict",
+    "numpy",
+    "opencv-python",
+    "torch",
+    "torchvision",
+    "tqdm",
+]
+
+[tool.setuptools.packages.find]
+exclude = [
+    "assets",
+    "loss",
+]
+
+[project.urls]
+Repository = "https://github.com/samaust/Video-Depth-Anything"

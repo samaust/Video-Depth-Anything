@@ -3,11 +3,10 @@
 #
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-
+#
 # References:
 #   https://github.com/facebookresearch/dino/blob/master/vision_transformer.py
 #   https://github.com/rwightman/pytorch-image-models/tree/master/timm/models/vision_transformer.py
-
 import logging
 
 from torch import Tensor
@@ -18,7 +17,7 @@ logger = logging.getLogger("dinov2")
 
 
 try:
-    from xformers.ops import memory_efficient_attention, unbind, fmha
+    from xformers.ops import memory_efficient_attention, unbind
 
     XFORMERS_AVAILABLE = True
 except ImportError:
@@ -79,5 +78,3 @@ class MemEffAttention(Attention):
         x = self.proj(x)
         x = self.proj_drop(x)
         return x
-
-        

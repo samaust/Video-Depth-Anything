@@ -1,16 +1,12 @@
-
-import numpy as np
-import cv2
-import matplotlib.pyplot as plt
-import json
-
 import argparse
-from scipy.ndimage import map_coordinates
-from tqdm import tqdm
+import json
 import os
-import gc
 
+import cv2
+import numpy as np
 import torch
+from tqdm import tqdm
+
 from metric import *
 import metric
 
@@ -20,6 +16,7 @@ eval_metrics = [
     "rmse_linear",
     "delta1_acc",
 ]
+
 
 def get_infer(infer_path,args, target_size = None):
     if infer_path.split('.')[-1] == 'npy':
@@ -33,11 +30,12 @@ def get_infer(infer_path,args, target_size = None):
         infer_factor = 1.0 / 255.0
 
     infer = img_gray / infer_factor
-    
+
     if target_size is not None:
         if infer.shape[0] != target_size[0] or infer.shape[1] != target_size[1]:
             infer = cv2.resize(infer, (target_size[1], target_size[0]))
     return infer
+
 
 def get_gt(depth_gt_path, gt_factor, args):
     if depth_gt_path.split('.')[-1] == 'npy':
@@ -49,10 +47,13 @@ def get_gt(depth_gt_path, gt_factor, args):
     depth_gt[depth_gt==0] = -1
     return depth_gt
 
+
 def get_flow(flow_path):
     assert os.path.exists(flow_path)
     flow = np.load(flow_path, allow_pickle=True)
     return flow
+
+
 def depth2disparity(depth, return_mask=False):
     if isinstance(depth, np.ndarray):
         disparity = np.zeros_like(depth)
@@ -63,8 +64,8 @@ def depth2disparity(depth, return_mask=False):
     else:
         return disparity
 
+
 def eval_depthcrafter(infer_paths, depth_gt_paths, factors, args):
-    depth_errors = []
     gts = []
     infs = []
     seq_length = args.max_eval_len
@@ -74,17 +75,17 @@ def eval_depthcrafter(infer_paths, depth_gt_paths, factors, args):
             continue
         depth_gt = get_gt(depth_gt_paths[i], factors[i], args)
         depth_gt = depth_gt[args.a:args.b, args.c:args.d]
-        
+
         infer = get_infer(infer_paths[i], args, target_size=depth_gt.shape)
         gts.append(depth_gt)
         infs.append(infer)
     gts = np.stack(gts, axis=0)
-    
+
     infs = np.stack(infs, axis=0)
     infs = infs[:seq_length]
     gts = gts[:seq_length]
     valid_mask = np.logical_and((gts>1e-3), (gts<dataset_max_depth))
-    
+
     gt_disp_masked = 1. / (gts[valid_mask].reshape((-1,1)).astype(np.float64) + 1e-8)
     infs = np.clip(infs, a_min=1e-3, a_max=None)
     pred_disp_masked = infs[valid_mask].reshape((-1,1)).astype(np.float64)
@@ -122,17 +123,16 @@ def eval_depthcrafter(infer_paths, depth_gt_paths, factors, args):
 
 
 def main():
-    
     parser = argparse.ArgumentParser()
     parser.add_argument('--infer_path', type=str, default='')
     parser.add_argument('--infer_type', type=str, default='npy')
     parser.add_argument('--benchmark_path', type=str, default='')
     parser.add_argument('--datasets', type=str, nargs='+', default=['vkitti', 'kitti', 'sintel', 'nyu_v2', 'tartanair', 'bonn', 'ip_lidar'])
-    
+
     args = parser.parse_args()
 
     results_save_path = os.path.join(args.infer_path, 'results.txt')
-   
+
     for dataset in args.datasets:
 
         file = open(results_save_path, 'a')
@@ -224,7 +224,7 @@ def main():
 
         with open(args.json_file, 'r') as fs:
             path_json = json.load(fs)
-        
+
         json_data = path_json[dataset]
         scale_stds = shift_stds = stable_result_fulls = stable_result_wins = 0
         depth_result_fulls = np.zeros(5)
@@ -244,7 +244,6 @@ def main():
                 factors = []
                 for images in value:
                     infer_path = (args.infer_path + '/'+ dataset + '/' + images['image']).replace('.jpg', '.npy').replace('.png', '.npy')
-                    
                     infer_paths.append(infer_path)
                     depth_gt_paths.append(args.root_path + '/' + images['gt_depth'])
                     factors.append(images['factor'])
@@ -261,5 +260,7 @@ def main():
             print(f"{metric}: {final_results_mean[i]:04f}")
             file.write(f"{metric}: {final_results_mean[i]:04f}\n")
         file.write(f'<{line} {dataset} finish {line}>\n')
+
+
 if __name__ == '__main__':
     main()

@@ -1,7 +1,9 @@
 .vscode/
+build
 outputs
 checkpoints
 __pycache__
 */__pycache__
+*.egg-info/
 *.pyc
 gradio*
